@@ -272,6 +272,7 @@ class PlantVillageTorchDataset:
         return len(self.hf_dataset)
 
     def __getitem__(self, idx):
+        from PIL import Image
         item = self.hf_dataset[idx]
         image = item["image"].convert("RGB")
         label = int(item["label"])
@@ -287,9 +288,11 @@ class ImagePathTorchDataset:
         return len(self.samples)
 
     def __getitem__(self, idx):
+        from PIL import Image
         image_path, label = self.samples[idx]
         image = Image.open(image_path).convert("RGB")
         return self.transform(image), int(label)
+
 
 
 def load_training_data(args):
@@ -459,6 +462,29 @@ def save_confusion_matrix(y_true, y_pred, class_names, output_path: Path):
     plt.close()
 
 
+def compute_class_weights(train_split, num_classes: int) -> "torch.Tensor":
+    """Calcule les poids de classe inversement proportionnels aux frequences."""
+    import torch
+    counts = [0] * num_classes
+    if hasattr(train_split, "column_names") and "label" in train_split.column_names:
+        for lbl in train_split["label"]:
+            counts[int(lbl)] += 1
+    elif hasattr(train_split, "__iter__"):
+        for item in train_split:
+            if isinstance(item, dict) and "label" in item:
+                counts[int(item["label"])] += 1
+            elif isinstance(item, (list, tuple)) and len(item) >= 2:
+                counts[int(item[1])] += 1
+
+    total = sum(counts)
+    if total == 0 or min(counts) == 0:
+        return torch.ones(num_classes, dtype=torch.float32)
+
+    weights = [total / (num_classes * max(c, 1)) for c in counts]
+    weights_tensor = torch.tensor(weights, dtype=torch.float32)
+    return weights_tensor / weights_tensor.mean()
+
+
 def main():
     parser = argparse.ArgumentParser(description="Entrainement de diagnostic de maladies de plantes avec PyTorch.")
     parser.add_argument("--dataset", choices=["plantvillage", "local-imagefolder", "local-csv"], default="plantvillage")
@@ -473,9 +499,12 @@ def main():
     parser.add_argument("--batch-size", type=int, default=32)
     parser.add_argument("--image-size", type=int, default=IMAGE_SIZE)
     parser.add_argument("--freeze-backbone", action="store_true")
+    parser.add_argument("--unfreeze-after-epoch", type=int, default=None, help="Degeler le backbone apres N epoques de prechauffage.")
+    parser.add_argument("--balance-classes", action="store_true", help="Ponderer la fonction de perte pour corriger le desequilibre des classes.")
+    parser.add_argument("--early-stopping-patience", type=int, default=None, help="Nombre d'epoques sans amelioration avant arret anticipe.")
     parser.add_argument("--lr", type=float, default=1e-3)
     parser.add_argument("--seed", type=int, default=42)
-    parser.add_argument("--num-workers", type=int, default=2)
+    parser.add_argument("--num-workers", type=int, default=0 if os.name == "nt" else 2)
     parser.add_argument("--output-dir", type=Path, default=Path("outputs/model"))
     args = parser.parse_args()
 
@@ -511,13 +540,28 @@ def main():
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model = build_model(args.architecture, num_classes=len(id_to_label), freeze_backbone=args.freeze_backbone).to(device)
-    criterion = nn.CrossEntropyLoss()
+
+    if args.balance_classes:
+        class_weights = compute_class_weights(splits["train"], len(id_to_label)).to(device)
+        criterion = nn.CrossEntropyLoss(weight=class_weights)
+        print("Ponderation automatique des classes activee.")
+    else:
+        criterion = nn.CrossEntropyLoss()
+
     optimizer = optim.AdamW((parameter for parameter in model.parameters() if parameter.requires_grad), lr=args.lr, weight_decay=1e-4)
     scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode="max", patience=2, factor=0.5)
 
     best_val_acc = -1.0
+    epochs_without_improvement = 0
     history = []
     for epoch in range(1, args.epochs + 1):
+        if args.freeze_backbone and args.unfreeze_after_epoch and epoch == args.unfreeze_after_epoch + 1:
+            print(f"[Epoch {epoch:03d}] Degel progressif du backbone pour affinage global (fine-tuning)...")
+            for param in model.parameters():
+                param.requires_grad = True
+            optimizer = optim.AdamW(model.parameters(), lr=args.lr * 0.1, weight_decay=1e-4)
+            scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode="max", patience=2, factor=0.5)
+
         train_loss, train_acc = run_epoch(model, loaders["train"], criterion, optimizer, device, train=True)
         val_loss, val_acc = run_epoch(model, loaders["validation"], criterion, optimizer, device, train=False)
         scheduler.step(val_acc)
@@ -537,6 +581,7 @@ def main():
         )
         if val_acc > best_val_acc:
             best_val_acc = val_acc
+            epochs_without_improvement = 0
             torch.save(
                 {
                     "architecture": args.architecture,
@@ -549,6 +594,11 @@ def main():
                 },
                 args.output_dir / "best_model.pt",
             )
+        else:
+            epochs_without_improvement += 1
+            if args.early_stopping_patience and epochs_without_improvement >= args.early_stopping_patience:
+                print(f"Arret anticipe (Early Stopping) declenche apres {epoch} epoques (patience: {args.early_stopping_patience}).")
+                break
 
     checkpoint = torch.load(args.output_dir / "best_model.pt", map_location=device)
     model = build_model(

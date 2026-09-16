@@ -80,10 +80,36 @@ Le script cree les splits train/validation/test, applique les augmentations, ent
 - `metrics.json`
 - `confusion_matrix.png`
 
-## Prediction sur une nouvelle photo
+## Prediction et Explicabilite visuelle (Grad-CAM)
+
+Prediction standard :
 
 ```bash
 python predict_photo.py --checkpoint outputs/resnet18/best_model.pt --labels outputs/resnet18/label_map.json --image chemin/vers/feuille.jpg
+```
+
+Prediction avec generation de la carte thermique Grad-CAM (superposee sur la feuille) :
+
+```bash
+python predict_photo.py --checkpoint outputs/resnet18/best_model.pt --labels outputs/resnet18/label_map.json --image chemin/vers/feuille.jpg --explain --output-heatmap outputs/heatmap.png
+```
+
+Rapport complet d'explicabilite (photo originale + carte thermique + zone cible mise en evidence) :
+
+```bash
+python explain_prediction.py --checkpoint outputs/resnet18/best_model.pt --labels outputs/resnet18/label_map.json --image chemin/vers/feuille.jpg --output outputs/gradcam_report.png
+```
+
+## Options d'entrainement avancees
+
+- **Ponderation automatique des classes** (contre les desequilibres) : `--balance-classes`
+- **Arret anticipe (Early Stopping)** : `--early-stopping-patience 3`
+- **Degel progressif du backbone (Fine-tuning)** : `--freeze-backbone --unfreeze-after-epoch 3`
+
+Exemple d'entrainement complet et optimise :
+
+```bash
+python train_plant_disease.py --architecture resnet18 --epochs 20 --balance-classes --early-stopping-patience 4 --output-dir outputs/resnet18_advanced
 ```
 
 ## Conseils climatiques
@@ -111,11 +137,13 @@ Les hypotheses, tableaux de calcul et limites sont dans [docs/feasibility_study.
 ├── climate_advice.py         # Moteur de regles agronomiques et meteo (Open-Meteo)
 ├── docs/
 │   └── feasibility_study.md  # Etude detaillee de faisabilite et chiffrages
+├── explain_prediction.py     # Rapport visuel complet d'explicabilite (Grad-CAM)
+├── gradcam.py                # Module PyTorch generique Grad-CAM (ResNet, MobileNet, CNN)
 ├── outputs/                  # Metriques, matrices de confusion et modeles
-├── predict_photo.py          # Inference et prediction sur image
+├── predict_photo.py          # Inference et prediction sur image (avec support --explain)
 ├── prepare_karaagro_crops.py # Recadrage bounding-boxes (KaraAgro) vers classification
 ├── requirements.txt          # Dependances Python
-├── train_plant_disease.py    # Pipeline complet d'entrainement PyTorch
+├── train_plant_disease.py    # Pipeline complet d'entrainement PyTorch avec Early Stopping
 ├── yield_estimation.py       # Estimation des rendements par facteurs de stress
 └── LICENSE                   # Licence MIT
 ```
@@ -123,4 +151,5 @@ Les hypotheses, tableaux de calcul et limites sont dans [docs/feasibility_study.
 ## Licence
 
 Ce projet est distribue sous licence MIT. Voir le fichier [LICENSE](LICENSE) pour plus d'informations.
+
 

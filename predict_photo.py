@@ -26,6 +26,8 @@ def main():
     parser.add_argument("--labels", type=Path, required=True)
     parser.add_argument("--image", type=Path, required=True)
     parser.add_argument("--top-k", type=int, default=3)
+    parser.add_argument("--explain", action="store_true", help="Genere une carte thermique Grad-CAM sur la photo")
+    parser.add_argument("--output-heatmap", type=Path, default=Path("outputs/prediction_gradcam.png"), help="Chemin du fichier pour la carte thermique")
     args = parser.parse_args()
 
     _require_prediction_dependencies()
@@ -57,9 +59,24 @@ def main():
         probabilities = torch.softmax(model(tensor), dim=1)[0]
     top_values, top_indices = torch.topk(probabilities, k=min(args.top_k, len(labels)))
 
+    print("Predictions :")
     for score, idx in zip(top_values.cpu().tolist(), top_indices.cpu().tolist()):
-        print(f"{labels[str(idx)]}: {score:.3f}")
+        print(f"  - {labels[str(idx)]}: {score:.3f}")
+
+    if args.explain:
+        from gradcam import GradCAM, overlay_heatmap_on_image
+
+        top_class = int(top_indices[0].item())
+        cam = GradCAM(model, architecture=checkpoint["architecture"])
+        heatmap = cam.generate_heatmap(tensor, target_class=top_class)
+        cam.remove_hooks()
+
+        overlay_img, _ = overlay_heatmap_on_image(image, heatmap, alpha=0.45)
+        args.output_heatmap.parent.mkdir(parents=True, exist_ok=True)
+        overlay_img.save(args.output_heatmap)
+        print(f"Carte thermique Grad-CAM sauvegardee: {args.output_heatmap}")
 
 
 if __name__ == "__main__":
     main()
+
