@@ -31,6 +31,7 @@ outputs/**/*.pth
 # Datasets (large images)
 data/
 !data/smoke_test/
+!data/samples/
 
 # Matplotlib & cache directories
 .matplotlib/

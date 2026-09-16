@@ -80,21 +80,38 @@ Le script cree les splits train/validation/test, applique les augmentations, ent
 - `metrics.json`
 - `confusion_matrix.png`
 
+## Interface Web Interactive (Streamlit)
+
+Pour tester l'ensemble du système (diagnostic sécurisé, netteté anti-flou, carte thermique Grad-CAM dynamique, météo Open-Meteo en direct et simulateur de rendement) dans une interface graphique moderne :
+
+```bash
+streamlit run app.py
+```
+
+L'application s'ouvre automatiquement dans votre navigateur à l'adresse `http://localhost:8501`.
+
 ## Prediction et Explicabilite visuelle (Grad-CAM)
 
-Prediction standard :
+### Diagnostic sécurisé "Zéro faux positif" (Recommandé sur le terrain) :
+Active les garde-fous agronomiques (contrôle de netteté anti-flou, luminosité, Test-Time Augmentation sous 5 angles et seuil de rejet) :
+
+```bash
+python predict_photo.py --checkpoint outputs/resnet18/best_model.pt --labels outputs/resnet18/label_map.json --image chemin/vers/feuille.jpg --safe-mode
+```
+
+### Prediction standard :
 
 ```bash
 python predict_photo.py --checkpoint outputs/resnet18/best_model.pt --labels outputs/resnet18/label_map.json --image chemin/vers/feuille.jpg
 ```
 
-Prediction avec generation de la carte thermique Grad-CAM (superposee sur la feuille) :
+### Prediction avec generation de la carte thermique Grad-CAM :
 
 ```bash
 python predict_photo.py --checkpoint outputs/resnet18/best_model.pt --labels outputs/resnet18/label_map.json --image chemin/vers/feuille.jpg --explain --output-heatmap outputs/heatmap.png
 ```
 
-Rapport complet d'explicabilite (photo originale + carte thermique + zone cible mise en evidence) :
+### Rapport complet d'explicabilite (3 panneaux) :
 
 ```bash
 python explain_prediction.py --checkpoint outputs/resnet18/best_model.pt --labels outputs/resnet18/label_map.json --image chemin/vers/feuille.jpg --output outputs/gradcam_report.png
@@ -133,6 +150,7 @@ Les hypotheses, tableaux de calcul et limites sont dans [docs/feasibility_study.
 ## Structure du projet
 
 ```text
+├── app.py                    # Interface web interactive Streamlit (Diagnostic, Grad-CAM, Météo, Rendement)
 ├── audit_dataset.py          # Audit et analyse statistique des jeux de donnees
 ├── climate_advice.py         # Moteur de regles agronomiques et meteo (Open-Meteo)
 ├── docs/
@@ -140,8 +158,9 @@ Les hypotheses, tableaux de calcul et limites sont dans [docs/feasibility_study.
 ├── explain_prediction.py     # Rapport visuel complet d'explicabilite (Grad-CAM)
 ├── gradcam.py                # Module PyTorch generique Grad-CAM (ResNet, MobileNet, CNN)
 ├── outputs/                  # Metriques, matrices de confusion et modeles
-├── predict_photo.py          # Inference et prediction sur image (avec support --explain)
+├── predict_photo.py          # Inference et prediction sur image (options --explain et --safe-mode)
 ├── prepare_karaagro_crops.py # Recadrage bounding-boxes (KaraAgro) vers classification
+├── reliability.py            # Module de fiabilite critique (anti-flou, TTA, entropie, rejet)
 ├── requirements.txt          # Dependances Python
 ├── train_plant_disease.py    # Pipeline complet d'entrainement PyTorch avec Early Stopping
 ├── yield_estimation.py       # Estimation des rendements par facteurs de stress
@@ -151,5 +170,6 @@ Les hypotheses, tableaux de calcul et limites sont dans [docs/feasibility_study.
 ## Licence
 
 Ce projet est distribue sous licence MIT. Voir le fichier [LICENSE](LICENSE) pour plus d'informations.
+
 
 

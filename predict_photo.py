@@ -28,6 +28,9 @@ def main():
     parser.add_argument("--top-k", type=int, default=3)
     parser.add_argument("--explain", action="store_true", help="Genere une carte thermique Grad-CAM sur la photo")
     parser.add_argument("--output-heatmap", type=Path, default=Path("outputs/prediction_gradcam.png"), help="Chemin du fichier pour la carte thermique")
+    parser.add_argument("--safe-mode", action="store_true", help="Active les garde-fous agronomiques (anti-flou, TTA, seuil de rejet)")
+    parser.add_argument("--min-confidence", type=float, default=0.75, help="Seuil de confiance minimale en safe-mode")
+    parser.add_argument("--min-sharpness", type=float, default=45.0, help="Score minimal de netteté (anti-flou)")
     args = parser.parse_args()
 
     _require_prediction_dependencies()
@@ -53,15 +56,38 @@ def main():
         ]
     )
     image = Image.open(args.image).convert("RGB")
-    tensor = transform(image).unsqueeze(0).to(device)
 
-    with torch.no_grad():
-        probabilities = torch.softmax(model(tensor), dim=1)[0]
-    top_values, top_indices = torch.topk(probabilities, k=min(args.top_k, len(labels)))
+    if args.safe_mode:
+        from reliability import safe_predict
 
-    print("Predictions :")
-    for score, idx in zip(top_values.cpu().tolist(), top_indices.cpu().tolist()):
-        print(f"  - {labels[str(idx)]}: {score:.3f}")
+        safe_res = safe_predict(
+            model=model,
+            image=image,
+            labels=labels,
+            transform=transform,
+            device=device,
+            min_confidence=args.min_confidence,
+            min_sharpness=args.min_sharpness,
+            use_tta=True,
+        )
+        print(f"Statut : {safe_res.badge_label}")
+        print(f"Qualite image : Nettete={safe_res.quality['sharpness']:.1f} (seuil {args.min_sharpness}), Luminosite={safe_res.quality['brightness']:.1f}/255")
+        print(f"Stabilite TTA : {safe_res.stability_score:.1%}")
+        print(f"Explication : {safe_res.message}\n")
+
+        print("Predictions :")
+        for lbl, score in safe_res.top_predictions[: args.top_k]:
+            print(f"  - {lbl}: {score:.3f}")
+    else:
+        tensor = transform(image).unsqueeze(0).to(device)
+        with torch.no_grad():
+            probabilities = torch.softmax(model(tensor), dim=1)[0]
+        top_values, top_indices = torch.topk(probabilities, k=min(args.top_k, len(labels)))
+
+        print("Predictions :")
+        for score, idx in zip(top_values.cpu().tolist(), top_indices.cpu().tolist()):
+            print(f"  - {labels[str(idx)]}: {score:.3f}")
+
 
     if args.explain:
         from gradcam import GradCAM, overlay_heatmap_on_image
