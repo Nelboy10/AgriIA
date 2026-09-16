@@ -1,0 +1,39 @@
+{
+  "history": [
+    {
+      "epoch": 1,
+      "train_loss": 0.6670109182596207,
+      "train_accuracy": 0.625,
+      "validation_loss": 0.5517171025276184,
+      "validation_accuracy": 1.0
+    }
+  ],
+  "test_accuracy": 1.0,
+  "classification_report": {
+    "disease": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1-score": 1.0,
+      "support": 2.0
+    },
+    "healthy": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1-score": 1.0,
+      "support": 2.0
+    },
+    "accuracy": 1.0,
+    "macro avg": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1-score": 1.0,
+      "support": 4.0
+    },
+    "weighted avg": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1-score": 1.0,
+      "support": 4.0
+    }
+  }
+}

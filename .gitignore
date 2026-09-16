@@ -1,0 +1,49 @@
+# Python & Bytecode
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# Environments
+.venv/
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# PyTorch / ML checkpoints & big weights
+*.pt
+*.pth
+*.onnx
+*.bin
+*.ckpt
+outputs/**/*.pt
+outputs/**/*.pth
+
+# Keep output directories and lightweight artifacts (metrics, labels, plots)
+!outputs/**/
+!outputs/**/label_map.json
+!outputs/**/metrics.json
+!outputs/**/confusion_matrix.png
+
+# Datasets (large images)
+data/
+!data/smoke_test/
+
+# Matplotlib & cache directories
+.matplotlib/
+.cache/
+.ipynb_checkpoints/
+
+# IDE & Editor configs
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
