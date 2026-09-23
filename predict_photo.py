@@ -56,6 +56,7 @@ def main():
         ]
     )
     image = Image.open(args.image).convert("RGB")
+    tensor = transform(image).unsqueeze(0).to(device)
 
     if args.safe_mode:
         from reliability import safe_predict
@@ -78,11 +79,15 @@ def main():
         print("Predictions :")
         for lbl, score in safe_res.top_predictions[: args.top_k]:
             print(f"  - {lbl}: {score:.3f}")
+        top_class = next(
+            index for index, label in labels.items() if label == safe_res.top_predictions[0][0]
+        )
+        top_class = int(top_class)
     else:
-        tensor = transform(image).unsqueeze(0).to(device)
         with torch.no_grad():
             probabilities = torch.softmax(model(tensor), dim=1)[0]
         top_values, top_indices = torch.topk(probabilities, k=min(args.top_k, len(labels)))
+        top_class = int(top_indices[0].item())
 
         print("Predictions :")
         for score, idx in zip(top_values.cpu().tolist(), top_indices.cpu().tolist()):
@@ -92,7 +97,6 @@ def main():
     if args.explain:
         from gradcam import GradCAM, overlay_heatmap_on_image
 
-        top_class = int(top_indices[0].item())
         cam = GradCAM(model, architecture=checkpoint["architecture"])
         heatmap = cam.generate_heatmap(tensor, target_class=top_class)
         cam.remove_hooks()

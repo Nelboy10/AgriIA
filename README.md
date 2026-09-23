@@ -18,6 +18,14 @@ Option rapide et recommandee, par transfert d'apprentissage avec ResNet18:
 python train_plant_disease.py --architecture resnet18 --epochs 10 --batch-size 32 --output-dir outputs/resnet18
 ```
 
+Modele specialise tomate avec une base independante PlantDoc:
+
+```bash
+python train_plant_disease.py --dataset plantdoc-tomato --architecture resnet18 --epochs 10 --batch-size 32 --balance-classes --early-stopping-patience 3 --output-dir outputs/plantdoc_tomato_resnet18
+```
+
+Ce modele couvre 9 classes de feuilles de tomate. Le modele general PlantVillage reste recommande pour les autres cultures.
+
 Option pedagogique, CNN simple entraine depuis zero:
 
 ```bash
@@ -79,6 +87,8 @@ Le script cree les splits train/validation/test, applique les augmentations, ent
 - `label_map.json`
 - `metrics.json`
 - `confusion_matrix.png`
+
+Le meilleur checkpoint est selectionne selon le macro-F1 de validation, afin de ne pas privilegier une classe majoritaire au detriment des autres.
 
 ## Interface Web Interactive (Streamlit)
 

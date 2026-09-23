@@ -1,0 +1,77 @@
+{
+  "history": [
+    {
+      "epoch": 1,
+      "train_loss": 0.4255607387749478,
+      "train_accuracy": 0.75,
+      "train_macro_f1": 0.7333333333333334,
+      "validation_loss": 0.13709786534309387,
+      "validation_accuracy": 1.0,
+      "validation_macro_f1": 1.0
+    },
+    {
+      "epoch": 2,
+      "train_loss": 9.676129047875293e-05,
+      "train_accuracy": 1.0,
+      "train_macro_f1": 1.0,
+      "validation_loss": 0.006710099056363106,
+      "validation_accuracy": 1.0,
+      "validation_macro_f1": 1.0
+    },
+    {
+      "epoch": 3,
+      "train_loss": 0.011002478073351085,
+      "train_accuracy": 1.0,
+      "train_macro_f1": 1.0,
+      "validation_loss": 3.242397360736504e-05,
+      "validation_accuracy": 1.0,
+      "validation_macro_f1": 1.0
+    },
+    {
+      "epoch": 4,
+      "train_loss": 5.722022706322605e-06,
+      "train_accuracy": 1.0,
+      "train_macro_f1": 1.0,
+      "validation_loss": 6.380263948813081e-05,
+      "validation_accuracy": 1.0,
+      "validation_macro_f1": 1.0
+    },
+    {
+      "epoch": 5,
+      "train_loss": 0.0002332465055587818,
+      "train_accuracy": 1.0,
+      "train_macro_f1": 1.0,
+      "validation_loss": 0.00024780305102467537,
+      "validation_accuracy": 1.0,
+      "validation_macro_f1": 1.0
+    }
+  ],
+  "test_accuracy": 1.0,
+  "classification_report": {
+    "disease": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1-score": 1.0,
+      "support": 2.0
+    },
+    "healthy": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1-score": 1.0,
+      "support": 2.0
+    },
+    "accuracy": 1.0,
+    "macro avg": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1-score": 1.0,
+      "support": 4.0
+    },
+    "weighted avg": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1-score": 1.0,
+      "support": 4.0
+    }
+  }
+}

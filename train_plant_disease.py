@@ -15,8 +15,8 @@ NORMALIZE_STD = [0.229, 0.224, 0.225]
 
 
 def _require_training_dependencies():
-    global np, torch, nn, optim, DatasetDict, load_dataset
-    global accuracy_score, classification_report, confusion_matrix
+    global np, torch, nn, optim, DatasetDict, concatenate_datasets, load_dataset
+    global accuracy_score, classification_report, confusion_matrix, f1_score
     global DataLoader, Image, models, transforms, tqdm
 
     try:
@@ -24,9 +24,9 @@ def _require_training_dependencies():
         import torch
         import torch.nn as nn
         import torch.optim as optim
-        from datasets import DatasetDict, load_dataset
+        from datasets import DatasetDict, concatenate_datasets, load_dataset
         from PIL import Image
-        from sklearn.metrics import accuracy_score, classification_report, confusion_matrix
+        from sklearn.metrics import accuracy_score, classification_report, confusion_matrix, f1_score
         from torch.utils.data import DataLoader
         from torchvision import models, transforms
         from tqdm import tqdm
@@ -115,6 +115,67 @@ def load_plantvillage_splits(seed: int = 42) -> Tuple[DatasetDict, Dict[int, str
         test=split_2["test"],
     )
     return splits, id_to_label
+
+
+def load_plantdoc_tomato_splits(seed: int = 42) -> Tuple[DatasetDict, Dict[int, str]]:
+    """Charge PlantDoc Tomato et cree train/validation/test."""
+    _require_training_dependencies()
+    dataset = load_dataset("adipotnis/plantdoc-tomato")
+    train_dataset = dataset["train"]
+    test_dataset = dataset["test"]
+    train_dataset, id_to_label = _standardize_label_column(train_dataset, "text")
+    test_dataset, _ = _standardize_label_column(test_dataset, "text")
+    split_1 = train_dataset.train_test_split(test_size=0.15, seed=seed)
+    validation_dataset = split_1["test"]
+    return (
+        DatasetDict(
+            train=split_1["train"],
+            validation=validation_dataset,
+            test=test_dataset,
+        ),
+        id_to_label,
+    )
+
+
+def load_combined_plantvillage_plantdoc_splits(seed: int = 42):
+    """Fusionne PlantVillage et PlantDoc Tomato avec des classes harmonisees."""
+    plantvillage_splits, plantvillage_labels = load_plantvillage_splits(seed=seed)
+    plantdoc_splits, plantdoc_labels = load_plantdoc_tomato_splits(seed=seed)
+    plantvillage_name_to_id = {name: idx for idx, name in plantvillage_labels.items()}
+    plantdoc_to_plantvillage = {
+        "Tomato Early blight leaf": "Tomato___Early_blight",
+        "Tomato Septoria leaf spot": "Tomato___Septoria_leaf_spot",
+        "Tomato leaf": "Tomato___healthy",
+        "Tomato leaf bacterial spot": "Tomato___Bacterial_spot",
+        "Tomato leaf late blight": "Tomato___Late_blight",
+        "Tomato leaf mosaic virus": "Tomato___Tomato_mosaic_virus",
+        "Tomato leaf yellow virus": "Tomato___Tomato_Yellow_Leaf_Curl_Virus",
+        "Tomato mold leaf": "Tomato___Leaf_Mold",
+            "Tomato two spotted spider mites leaf": "Tomato___Spider_mites Two-spotted_spider_mite",
+    }
+    missing_names = [
+        target for target in plantdoc_to_plantvillage.values()
+        if target not in plantvillage_name_to_id
+    ]
+    if missing_names:
+        raise ValueError(f"Classes PlantVillage absentes pour la fusion: {', '.join(missing_names)}")
+
+    plantdoc_label_names = {idx: name for idx, name in plantdoc_labels.items()}
+    plantdoc_target_ids = {
+        source_id: plantvillage_name_to_id[plantdoc_to_plantvillage[source_name]]
+        for source_id, source_name in plantdoc_label_names.items()
+    }
+
+    def remap_labels(dataset):
+        return dataset.map(lambda item: {"label": plantdoc_target_ids[int(item["label"])]})
+
+    combined_splits = {
+        split_name: concatenate_datasets(
+            [plantvillage_splits[split_name], remap_labels(plantdoc_splits[split_name])]
+        ).shuffle(seed=seed)
+        for split_name in ("train", "validation", "test")
+    }
+    return DatasetDict(combined_splits), plantvillage_labels
 
 
 def _is_image_file(path: Path) -> bool:
@@ -299,6 +360,12 @@ def load_training_data(args):
     if args.dataset == "plantvillage":
         splits, id_to_label = load_plantvillage_splits(seed=args.seed)
         dataset_class = PlantVillageTorchDataset
+    elif args.dataset == "plantdoc-tomato":
+        splits, id_to_label = load_plantdoc_tomato_splits(seed=args.seed)
+        dataset_class = PlantVillageTorchDataset
+    elif args.dataset == "plantvillage-plantdoc":
+        splits, id_to_label = load_combined_plantvillage_plantdoc_splits(seed=args.seed)
+        dataset_class = PlantVillageTorchDataset
     elif args.dataset == "local-imagefolder":
         if args.data_dir is None:
             raise SystemExit("--data-dir est requis avec --dataset local-imagefolder")
@@ -429,7 +496,8 @@ def run_epoch(model, loader, criterion, optimizer, device, train: bool):
 
     epoch_loss = running_loss / len(loader.dataset)
     epoch_acc = accuracy_score(all_labels, all_preds)
-    return epoch_loss, epoch_acc
+    epoch_macro_f1 = f1_score(all_labels, all_preds, average="macro", zero_division=0)
+    return epoch_loss, epoch_acc, epoch_macro_f1
 
 
 def evaluate(model, loader, device):
@@ -487,7 +555,7 @@ def compute_class_weights(train_split, num_classes: int) -> "torch.Tensor":
 
 def main():
     parser = argparse.ArgumentParser(description="Entrainement de diagnostic de maladies de plantes avec PyTorch.")
-    parser.add_argument("--dataset", choices=["plantvillage", "local-imagefolder", "local-csv"], default="plantvillage")
+    parser.add_argument("--dataset", choices=["plantvillage", "plantdoc-tomato", "plantvillage-plantdoc", "local-imagefolder", "local-csv"], default="plantvillage")
     parser.add_argument("--data-dir", type=Path, help="Racine des images pour un dataset local.")
     parser.add_argument("--csv", type=Path, help="CSV local avec colonnes image/label, optionnellement split.")
     parser.add_argument("--image-column", default="image")
@@ -551,7 +619,7 @@ def main():
     optimizer = optim.AdamW((parameter for parameter in model.parameters() if parameter.requires_grad), lr=args.lr, weight_decay=1e-4)
     scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode="max", patience=2, factor=0.5)
 
-    best_val_acc = -1.0
+    best_val_macro_f1 = -1.0
     epochs_without_improvement = 0
     history = []
     for epoch in range(1, args.epochs + 1):
@@ -562,25 +630,27 @@ def main():
             optimizer = optim.AdamW(model.parameters(), lr=args.lr * 0.1, weight_decay=1e-4)
             scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode="max", patience=2, factor=0.5)
 
-        train_loss, train_acc = run_epoch(model, loaders["train"], criterion, optimizer, device, train=True)
-        val_loss, val_acc = run_epoch(model, loaders["validation"], criterion, optimizer, device, train=False)
-        scheduler.step(val_acc)
+        train_loss, train_acc, train_macro_f1 = run_epoch(model, loaders["train"], criterion, optimizer, device, train=True)
+        val_loss, val_acc, val_macro_f1 = run_epoch(model, loaders["validation"], criterion, optimizer, device, train=False)
+        scheduler.step(val_macro_f1)
         history.append(
             {
                 "epoch": epoch,
                 "train_loss": train_loss,
                 "train_accuracy": train_acc,
+                "train_macro_f1": train_macro_f1,
                 "validation_loss": val_loss,
                 "validation_accuracy": val_acc,
+                "validation_macro_f1": val_macro_f1,
             }
         )
         print(
             f"Epoch {epoch:03d}/{args.epochs} | "
-            f"train loss={train_loss:.4f} acc={train_acc:.4f} | "
-            f"val loss={val_loss:.4f} acc={val_acc:.4f}"
+            f"train loss={train_loss:.4f} acc={train_acc:.4f} f1={train_macro_f1:.4f} | "
+            f"val loss={val_loss:.4f} acc={val_acc:.4f} f1={val_macro_f1:.4f}"
         )
-        if val_acc > best_val_acc:
-            best_val_acc = val_acc
+        if val_macro_f1 > best_val_macro_f1:
+            best_val_macro_f1 = val_macro_f1
             epochs_without_improvement = 0
             torch.save(
                 {

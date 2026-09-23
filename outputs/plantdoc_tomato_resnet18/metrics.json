@@ -1,0 +1,128 @@
+{
+  "history": [
+    {
+      "epoch": 1,
+      "train_loss": 2.134323996253636,
+      "train_accuracy": 0.24869565217391304,
+      "train_macro_f1": 0.2288950430420991,
+      "validation_loss": 7.863523745069317,
+      "validation_accuracy": 0.1568627450980392,
+      "validation_macro_f1": 0.12359711414437784
+    },
+    {
+      "epoch": 2,
+      "train_loss": 1.8113473019392594,
+      "train_accuracy": 0.36869565217391304,
+      "train_macro_f1": 0.3264071932984511,
+      "validation_loss": 2.0640920400619507,
+      "validation_accuracy": 0.3137254901960784,
+      "validation_macro_f1": 0.29863580547481217
+    },
+    {
+      "epoch": 3,
+      "train_loss": 1.5475948230079983,
+      "train_accuracy": 0.4678260869565217,
+      "train_macro_f1": 0.4033884784840336,
+      "validation_loss": 1.3240374291644377,
+      "validation_accuracy": 0.38235294117647056,
+      "validation_macro_f1": 0.36576598043949476
+    },
+    {
+      "epoch": 4,
+      "train_loss": 1.3935887208192246,
+      "train_accuracy": 0.4573913043478261,
+      "train_macro_f1": 0.43330803556314645,
+      "validation_loss": 1.9669479271944832,
+      "validation_accuracy": 0.3235294117647059,
+      "validation_macro_f1": 0.3377125290168769
+    },
+    {
+      "epoch": 5,
+      "train_loss": 1.2201522899710613,
+      "train_accuracy": 0.5478260869565217,
+      "train_macro_f1": 0.5052889669249829,
+      "validation_loss": 1.6068078466490203,
+      "validation_accuracy": 0.37254901960784315,
+      "validation_macro_f1": 0.31839922673256005
+    },
+    {
+      "epoch": 6,
+      "train_loss": 1.0665387477045474,
+      "train_accuracy": 0.5652173913043478,
+      "train_macro_f1": 0.5579809775081316,
+      "validation_loss": 1.3653064662334966,
+      "validation_accuracy": 0.43137254901960786,
+      "validation_macro_f1": 0.36471174027709224
+    }
+  ],
+  "test_accuracy": 0.36231884057971014,
+  "classification_report": {
+    "Tomato Early blight leaf": {
+      "precision": 0.35714285714285715,
+      "recall": 0.5555555555555556,
+      "f1-score": 0.43478260869565216,
+      "support": 9.0
+    },
+    "Tomato Septoria leaf spot": {
+      "precision": 0.5,
+      "recall": 0.09090909090909091,
+      "f1-score": 0.15384615384615385,
+      "support": 11.0
+    },
+    "Tomato leaf": {
+      "precision": 0.6,
+      "recall": 0.375,
+      "f1-score": 0.46153846153846156,
+      "support": 8.0
+    },
+    "Tomato leaf bacterial spot": {
+      "precision": 0.15384615384615385,
+      "recall": 0.2222222222222222,
+      "f1-score": 0.18181818181818182,
+      "support": 9.0
+    },
+    "Tomato leaf late blight": {
+      "precision": 0.2631578947368421,
+      "recall": 0.5,
+      "f1-score": 0.3448275862068966,
+      "support": 10.0
+    },
+    "Tomato leaf mosaic virus": {
+      "precision": 0.8333333333333334,
+      "recall": 0.5,
+      "f1-score": 0.625,
+      "support": 10.0
+    },
+    "Tomato leaf yellow virus": {
+      "precision": 1.0,
+      "recall": 0.5,
+      "f1-score": 0.6666666666666666,
+      "support": 6.0
+    },
+    "Tomato mold leaf": {
+      "precision": 0.16666666666666666,
+      "recall": 0.16666666666666666,
+      "f1-score": 0.16666666666666666,
+      "support": 6.0
+    },
+    "Tomato two spotted spider mites leaf": {
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1-score": 0.0,
+      "support": 0.0
+    },
+    "accuracy": 0.36231884057971014,
+    "macro avg": {
+      "precision": 0.43046076730287264,
+      "recall": 0.3233726150392817,
+      "f1-score": 0.3372384806042977,
+      "support": 69.0
+    },
+    "weighted avg": {
+      "precision": 0.47628715042902686,
+      "recall": 0.36231884057971014,
+      "f1-score": 0.37148258494650516,
+      "support": 69.0
+    }
+  }
+}
